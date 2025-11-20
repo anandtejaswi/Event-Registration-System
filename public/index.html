@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management System</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Simple modal styles */
+        .modal-backdrop {
+            transition: opacity 0.25s ease;
+            z-index: 50;
+        }
+        .modal-content {
+             z-index: 60;
+        }
+        body.modal-active {
+            overflow: hidden;
+        }
+        /* Styles for tabs in the manage modal */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .profile-tab-content { display: none; }
+        .profile-tab-content.active { display: block; }
+        
+        .tab-link, .profile-tab-link {
+            padding: 0.5rem 1rem;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+        }
+        .tab-link.active, .profile-tab-link.active {
+            border-color: #3B82F6; /* blue-500 */
+            color: #3B82F6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-40">
+        <h1 class="text-2xl font-bold text-blue-600 cursor-pointer" onclick="goHome()">EVENTRACK</h1>
+        <div id="auth-links">
+            <button id="login-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Login</button>
+            <button id="register-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg ml-2">Register</button>
+        </div>
+        <div id="user-info" class="hidden">
+            <span id="welcome-msg" class="mr-4"></span>
+            <button id="profile-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg ml-2">My Profile</button>
+            <button id="create-event-btn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg hidden">Create Event</button>
+            <button id="logout-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg ml-2">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto p-6">
+        <div id="event-list-view">
+            <h2 class="text-3xl font-semibold mb-6">Upcoming Events</h2>
+            <div id="event-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Event cards will be injected here by JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-md p-8 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-6">Login</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="login-username">Username</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700" id="login-username" type="text" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="login-password">Password</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700" id="login-password" type="password" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Sign In</button>
+                    <button class="modal-close-btn text-gray-600 hover:text-gray-800" type="button">Cancel</button>
+                </div>
+                <p id="login-error" class="text-red-500 text-sm mt-4 hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-md p-8 rounded-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+            <h2 class="text-2xl font-bold mb-6">Register</h2>
+            <form id="register-form">
+                <!-- Core Fields -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-name">Full Name *</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-name" type="text" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-email">Email *</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-email" type="email" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-username">Username *</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-username" type="text" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-password">Password *</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-password" type="password" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-role">I am a... *</label>
+                    <select id="reg-role" class="shadow border rounded-lg w-full py-2 px-3" required>
+                        <option value="audience">Audience (Attendee)</option>
+                        <option value="organizer">Organizer</option>
+                        <option value="volunteer">Volunteer</option>
+                    </select>
+                </div>
+
+                <!-- Optional Fields -->
+                <hr class="my-6">
+                <p class="text-sm text-gray-600 mb-4">Optional Details:</p>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-phone">Phone Number</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-phone" type="tel">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-address">Address</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-address" type="text">
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-state">State</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-state" type="text">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="reg-dob">Date of Birth</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="reg-dob" type="date">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mt-6">
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Register</button>
+                    <button class="modal-close-btn text-gray-600 hover:text-gray-800" type="button">Cancel</button>
+                </div>
+                <p id="register-error" class="text-red-500 text-sm mt-4 hidden"></p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Create Event Modal -->
+    <div id="create-event-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-lg p-8 rounded-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+            <h2 class="text-2xl font-bold mb-6">Create New Event</h2>
+            <form id="create-event-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="event-name">Event Name</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-name" type="text" required>
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-date">Date</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-date" type="date" required>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-time">Time</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-time" type="time" required>
+                    </div>
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-price">Price (INR)</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-price" type="number" min="0" value="0" required>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-volunteers">Volunteers Needed</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-volunteers" type="number" min="0" value="0" required>
+                    </div>
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-vid">Venue ID</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-vid" type="number" min="1" placeholder="e.g., 1" required>
+                        <p class="text-xs text-gray-500 mt-1">Note: Use '1' for "123 Tech Way"</p>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="event-etid">Event Type ID</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="event-etid" type="number" min="1" placeholder="e.g., 1" required>
+                         <p class="text-xs text-gray-500 mt-1">Note: 1=Music, 2=Tech, 3=Workshop</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-8">
+                    <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Create Event</button>
+                    <button class="modal-close-btn text-gray-600 hover:text-gray-800" type="button">Cancel</button>
+                </div>
+                <p id="create-event-error" class="text-red-500 text-sm mt-4 hidden"></p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Event Details Modal (Public) -->
+    <div id="event-details-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-3xl p-8 rounded-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+            <!-- Content will be populated by JS -->
+            <div id="event-details-content">
+                <div class="text-center p-8">
+                    <h3 class="text-lg font-semibold">Loading Event Details...</h3>
+                </div>
+            </div>
+            <div class="text-right mt-6">
+                <button class="modal-close-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Event Modal (Organizer) -->
+    <div id="manage-event-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-4xl p-8 rounded-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+            <h2 class="text-3xl font-bold mb-4">Manage Event</h2>
+            <p id="manage-event-name" class="text-xl text-gray-600 mb-6">Loading...</p>
+            <input type="hidden" id="manage-event-id-store">
+
+            <!-- Tab Links -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="flex -mb-px space-x-4" aria-label="Tabs">
+                    <button class="tab-link active" onclick="showTab(event, 'tab-edit')">Edit Details</button>
+                    <button class="tab-link" onclick="showTab(event, 'tab-audience')">View Audience</button>
+                    <button class="tab-link" onclick="showTab(event, 'tab-volunteers')">Manage Volunteers</button>
+                    <button class="tab-link" onclick="showTab(event, 'tab-schedule')">Manage Schedule</button>
+                    <button class="tab-link" onclick="showTab(event, 'tab-sponsors')">Manage Sponsors</button>
+                </nav>
+            </div>
+
+            <!-- Tab Content: Edit Details -->
+            <div id="tab-edit" class="tab-content active">
+                <h3 class="text-xl font-semibold mb-4">Edit Event Details</h3>
+                <form id="edit-event-form">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-event-name">Event Name</label>
+                        <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-event-name" type="text" required>
+                    </div>
+                    <div class="flex gap-4 mb-4">
+                        <div class="w-1/2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-event-date">Date</label>
+                            <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-event-date" type="date" required>
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-event-time">Time</label>
+                            <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-event-time" type="time" required>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mb-4">
+                        <div class="w-1/2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-event-price">Price (INR)</label>
+                            <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-event-price" type="number" min="0" required>
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-event-volunteers">Volunteers Needed</label>
+                            <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-event-volunteers" type="number" min="0" required>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">Note: Changing Venue or Event Type requires creating a new event.</p>
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Save Changes</button>
+                    <p id="edit-event-error" class="text-red-500 text-sm mt-4 hidden"></p>
+                </form>
+            </div>
+
+            <!-- Tab Content: View Audience -->
+            <div id="tab-audience" class="tab-content">
+                <h3 class="text-xl font-semibold mb-4">Audience</h3>
+                <div id="audience-list" class="overflow-x-auto">
+                    <p>Loading audience list...</p>
+                </div>
+            </div>
+
+            <!-- Tab Content: Manage Volunteers -->
+            <div id="tab-volunteers" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Current Volunteers</h3>
+                        <div id="volunteer-list" class="space-y-2">
+                            <p>Loading volunteers...</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Add Volunteer Manually</h3>
+                        <form id="add-volunteer-form">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="add-volunteer-uid">User ID</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="add-volunteer-uid" type="number" min="1" placeholder="e.g., 2" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="add-volunteer-role">Role</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="add-volunteer-role" type="text" placeholder="e.g., Ticket Scanner" required>
+                            </div>
+                            <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Add Volunteer</button>
+                            <p id="add-volunteer-error" class="text-red-500 text-sm mt-4 hidden"></p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Manage Schedule -->
+            <div id="tab-schedule" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Current Schedule</h3>
+                        <div id="schedule-list" class="space-y-2 item-container">
+                            <p>Loading schedule...</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Add Schedule Item</h3>
+                        <form id="add-schedule-form">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sched-time">Time</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sched-time" type="time" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sched-action">Action/Description</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sched-action" type="text" placeholder="e.g., Keynote Speech" required>
+                            </div>
+                            <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Add Item</button>
+                            <p id="add-schedule-error" class="text-red-500 text-sm mt-4 hidden"></p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Manage Sponsors -->
+            <div id="tab-sponsors" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Current Sponsors</h3>
+                        <div id="sponsor-list" class="space-y-2 item-container">
+                             <p>Loading sponsors...</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Add Sponsor</h3>
+                        <form id="add-sponsor-form">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-name">Sponsor Name</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-name" type="text" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-company">Company</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-company" type="text">
+                            </div>
+                             <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-email">Email</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-email" type="email">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-contact">Contact Phone</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-contact" type="text">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-type">Type</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-type" type="text" placeholder="e.g., Gold, Platinum">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="sponsor-money">Amount (INR)</label>
+                                <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="sponsor-money" type="number" min="0" value="0">
+                            </div>
+                            <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Add Sponsor</button>
+                            <p id="add-sponsor-error" class="text-red-500 text-sm mt-4 hidden"></p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="text-right mt-8 pt-6 border-t">
+                <button class="modal-close-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Schedule Modal -->
+    <div id="edit-schedule-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-md p-8 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-6">Edit Schedule Item</h2>
+            <form id="edit-schedule-form">
+                <input type="hidden" id="edit-schedule-id">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-sched-time">Time</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-sched-time" type="time" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="edit-sched-action">Action/Description</label>
+                    <input class="shadow appearance-none border rounded-lg w-full py-2 px-3" id="edit-sched-action" type="text" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" type="submit">Save Changes</button>
+                    <button class="modal-close-btn text-gray-600 hover:text-gray-800" type="button">Cancel</button>
+                </div>
+                <p id="edit-schedule-error" class="text-red-500 text-sm mt-4 hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Sponsor Modal -->
+    <div id="edit-sponsor-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <!-- ... (modal content) ... -->
+    </div>
+    
+    <!-- User Profile Modal -->
+    <div id="profile-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <!-- ... (modal content) ... -->
+    </div>
+
+    <!-- --- NEW --- Ticket Modal -->
+    <div id="ticket-modal" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-white w-full max-w-lg p-8 rounded-lg shadow-xl">
+            <h2 class="text-3xl font-bold mb-6 text-center text-blue-600">Event Ticket</h2>
+            <div id="ticket-content" class="border-4 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
+                <!-- Ticket content will be injected by JS -->
+                <p>Loading ticket...</p>
+            </div>
+            <div class="text-right mt-8">
+                <button class="modal-close-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+    
+
+    <script>
+        // --- GLOBAL STATE ---
+        let currentUser = null; // Store user data after login
+        let userRegistrations = []; // --- NEW --- Store IDs of events user is registered for
+        let currentEventCache = {}; // Cache event details
+        const API_URL = 'http://localhost:3000/api';
+
+        // --- DOM ELEMENTS ---
+        const eventListEl = document.getElementById('event-list');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const createEventBtn = document.getElementById('create-event-btn');
+        const authLinks = document.getElementById('auth-links');
+        const userInfo = document.getElementById('user-info');
+        const welcomeMsg = document.getElementById('welcome-msg');
+
+        const loginModal = document.getElementById('login-modal');
+        const registerModal = document.getElementById('register-modal');
+        const createEventModal = document.getElementById('create-event-modal');
+
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const createEventForm = document.getElementById('create-event-form');
+        
+        const loginErrorEl = document.getElementById('login-error');
+        const registerErrorEl = document.getElementById('register-error');
+        const createEventErrorEl = document.getElementById('create-event-error');
+
+        // --- Details Modal Elements ---
+        const eventDetailsModal = document.getElementById('event-details-modal');
+        const eventDetailsContent = document.getElementById('event-details-content');
+        
+        // --- Manage Modal Elements ---
+        const manageEventModal = document.getElementById('manage-event-modal');
+        const manageEventNameEl = document.getElementById('manage-event-name');
+        const manageEventIdStore = document.getElementById('manage-event-id-store');
+        const editEventForm = document.getElementById('edit-event-form');
+        const editEventErrorEl = document.getElementById('edit-event-error');
+        const audienceListEl = document.getElementById('audience-list');
+        const scheduleListEl = document.getElementById('schedule-list');
+        const addScheduleForm = document.getElementById('add-schedule-form');
+        const addScheduleErrorEl = document.getElementById('add-schedule-error');
+        const sponsorListEl = document.getElementById('sponsor-list');
+        const addSponsorForm = document.getElementById('add-sponsor-form');
+        const addSponsorErrorEl = document.getElementById('add-sponsor-error');
+
+        // --- Volunteer Tab Elements
+        const volunteerListEl = document.getElementById('volunteer-list');
+        const addVolunteerForm = document.getElementById('add-volunteer-form');
+        const addVolunteerErrorEl = document.getElementById('add-volunteer-error');
+
+        // --- Edit Modals
+        const editScheduleModal = document.getElementById('edit-schedule-modal');
+        const editScheduleForm = document.getElementById('edit-schedule-form');
+        const editScheduleErrorEl = document.getElementById('edit-schedule-error');
+        const editSponsorModal = document.getElementById('edit-sponsor-modal');
+        const editSponsorForm = document.getElementById('edit-sponsor-form');
+        const editSponsorErrorEl = document.getElementById('edit-sponsor-error');
+
+        // --- Profile Modal Elements
+        const profileBtn = document.getElementById('profile-btn');
+        const profileModal = document.getElementById('profile-modal');
+        const profileDetailsContent = document.getElementById('profile-details-content');
+        const profileHistoryList = document.getElementById('profile-history-list');
+        const editProfileForm = document.getElementById('edit-profile-form');
+        const editProfileErrorEl = document.getElementById('edit-profile-error');
+        const editPasswordForm = document.getElementById('edit-password-form');
+        const editPasswordErrorEl = document.getElementById('edit-password-error');
+        
+        // --- NEW --- Ticket Modal Elements
+        const ticketModal = document.getElementById('ticket-modal');
+        const ticketContentEl = document.getElementById('ticket-content');
+        
+        
+        // --- API FUNCTIONS ---
+
+        /**
+         * Fetches all events from the backend and displays them
+         */
+        async function fetchAndDisplayEvents() {
+            try {
+                const response = await fetch(`${API_URL}/events`);
+                if (!response.ok) throw new Error('Failed to fetch events');
+                
+                const events = await response.json();
+                eventListEl.innerHTML = '';
+                
+                if (events.length === 0) {
+                    eventListEl.innerHTML = '<p class="text-gray-600">No events found. Why not organize one?</p>';
+                    return;
+                }
+
+                events.forEach(event => {
+                    const isOrganizer = currentUser && currentUser.UID === event.oid;
+                    const eventCard = `
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <div class="p-6 flex-grow">
+                                <h3 class="text-xl font-bold mb-2">${event.ename}</h3>
+                                <p class="text-gray-600 mb-2">${event.event_type_name || 'General'} | ${new Date(event.edate).toLocaleDateString()} at ${event.etime}</p>
+                                <p class="text-gray-700 mb-4">${event.vaddress || 'Venue TBD'}</p>
+                            </div>
+                            <div class="p-4 bg-gray-50 flex flex-wrap justify-between items-center gap-2">
+                                <div>
+                                    <span class="text-lg font-bold text-blue-600">Rs. ${event.eprice}</span>
+                                    <span class="text-sm text-gray-500 ml-2">(${event.registration_count} registered)</span>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    ${isOrganizer ? `
+                                    <button onclick="openManageModal(${event.eid})" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 text-sm rounded-lg">Manage</button>` : ''}
+                                    <button onclick="openEventDetails(${event.eid})" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-3 text-sm rounded-lg ml-2">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    eventListEl.innerHTML += eventCard;
+                });
+
+            } catch (error) {
+                console.error(error);
+                eventListEl.innerHTML = '<p class="text-red-500">Could not load events.</p>';
+            }
+        }
+        
+         /**
+// ... existing code ... -->
+         * Handles the user registration form submission
+         */
+        async function handleRegister(e) {
+            e.preventDefault();
+            registerErrorEl.classList.add('hidden');
+
+            const payload = {
+                uname: document.getElementById('reg-name').value,
+                email: document.getElementById('reg-email').value,
+                username: document.getElementById('reg-username').value,
+                password: document.getElementById('reg-password').value,
+                user_role: document.getElementById('reg-role').value,
+                uphone: document.getElementById('reg-phone').value,
+                uaddress: document.getElementById('reg-address').value,
+                ustate: document.getElementById('reg-state').value,
+                udob: document.getElementById('reg-dob').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Registration failed');
+                
+                alert('Registration successful! Please log in.');
+                closeAllModals();
+                registerForm.reset();
+
+            } catch (error) {
+                registerErrorEl.textContent = error.message;
+                registerErrorEl.classList.remove('hidden');
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles the user login form submission
+         */
+        async function handleLogin(e) {
+            e.preventDefault();
+            loginErrorEl.classList.add('hidden');
+            const payload = {
+                username: document.getElementById('login-username').value,
+                password: document.getElementById('login-password').value,
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Login failed');
+
+                currentUser = data.user;
+                await fetchUserRegistrations(); // --- NEW --- Fetch registration history
+                updateNavUI(true);
+                closeAllModals();
+                loginForm.reset();
+                fetchAndDisplayEvents(); // Refresh events on login
+            } catch (error) {
+                loginErrorEl.textContent = error.message;
+                loginErrorEl.classList.remove('hidden');
+            }
+        }
+
+        // --- NEW ---
+        /**
+         * Fetches and stores the list of event IDs the user is registered for
+         */
+        async function fetchUserRegistrations() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(`${API_URL}/user/registrations`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID })
+                });
+                if (!response.ok) {
+                    userRegistrations = [];
+                    throw new Error('Could not fetch registrations');
+                }
+                userRegistrations = await response.json(); // e.g., [1, 5, 12]
+            } catch (error) {
+                console.error(error);
+                userRegistrations = [];
+            }
+        }
+        
+        /**
+         * Handles the user logging out
+         */
+        function handleLogout() {
+            currentUser = null;
+            userRegistrations = []; // --- NEW --- Clear registrations
+            updateNavUI(false);
+            fetchAndDisplayEvents(); // Refresh events on logout
+        }
+        
+        /**
+         * Handles the create event form submission
+// ... existing code ... -->
+         */
+        async function handleCreateEvent(e) {
+            e.preventDefault();
+            createEventErrorEl.classList.add('hidden');
+            if (!currentUser || currentUser.user_role !== 'organizer') {
+                alert('You must be logged in as an organizer to create events.');
+                return;
+            }
+            const payload = {
+                ename: document.getElementById('event-name').value,
+                edate: document.getElementById('event-date').value,
+                etime: document.getElementById('event-time').value,
+                eprice: parseInt(document.getElementById('event-price').value, 10),
+                evolunteers_no: parseInt(document.getElementById('event-volunteers').value, 10),
+                vid: parseInt(document.getElementById('event-vid').value, 10),
+                et_id: parseInt(document.getElementById('event-etid').value, 10),
+                oid: currentUser.UID
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/events`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create event');
+
+                alert('Event created successfully!');
+                closeAllModals();
+                createEventForm.reset();
+                fetchAndDisplayEvents();
+            } catch (error) {
+                console.error(error);
+                createEventErrorEl.textContent = error.message;
+                createEventErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Handles clicking the "Register" button (now inside details modal)
+         */
+        function handleEventRegisterClick(eventId, price) {
+            if (!currentUser) {
+                alert('Please log in or register to sign up for events.');
+                closeAllModals(); // Close details modal
+                openModal(loginModal); // Open login modal
+                return;
+            }
+            
+            let vRole = null;
+            if (currentUser.user_role === 'volunteer') {
+                vRole = prompt('What role would you like to volunteer for? (e.g., "Usher", "Info Booth")');
+                if (!vRole) return; // User cancelled prompt
+                alert(`Thank you for volunteering as "${vRole}"! Other information will be provided through Email.`);
+            } 
+            else if (currentUser.user_role === 'audience') {
+                alert(`You are about to register for this event for Rs. ${price}. This app would now take you to payment.`);
+                // In a real app: call a payment API, and only on success...
+            }
+            else if (currentUser.user_role === 'organizer') {
+                alert('Organizers cannot register for their own events.');
+                return;
+            }
+            registerForEventAPI(eventId, vRole);
+        }
+        
+        /**
+// ... existing code ... -->
+         * The actual API call to register for an event
+         */
+        async function registerForEventAPI(eventId, vRole) {
+            try {
+                const payload = {
+                    UID: currentUser.UID,
+                    EID: eventId,
+                    vRole: vRole
+                };
+                const response = await fetch(`${API_URL}/register-event`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Registration failed');
+                
+                alert('Successfully registered for the event!');
+                userRegistrations.push(eventId); // --- NEW --- Add to local list
+                closeAllModals();
+                fetchAndDisplayEvents(); // Refresh event list to show new count
+
+            } catch (error) {
+                console.error(error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+        
+        // --- Functions for Event Details Modal ---
+        
+        /**
+         * Opens and populates the public Event Details modal
+         * // --- MODIFIED --- to check registration status
+         */
+        async function openEventDetails(eventId) {
+            eventDetailsContent.innerHTML = '<p class="text-center p-8">Loading Event Details...</p>';
+            openModal(eventDetailsModal);
+
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}/details`);
+                if (!response.ok) throw new Error('Failed to fetch event details');
+                const data = await response.json();
+                
+                // Build HTML for the modal content
+                const { details, schedule, sponsors, registration_count } = data;
+                
+                // --- Helper function to build lists ---
+                const buildListHTML = (title, items, renderFn) => {
+                    let html = `<h3 class="text-xl font-semibold mb-3">${title}</h3>`;
+                    if (items.length === 0) {
+                        html += '<p class="text-gray-500">None added yet.</p>';
+                    } else {
+                        html += `<ul class="list-disc pl-5 space-y-1">`;
+                        html += items.map(renderFn).join('');
+                        html += `</ul>`;
+                    }
+                    return html;
+                };
+
+                // --- Render functions for lists ---
+                const scheduleRenderFn = item => `<li><strong>${item.sctimestamp}</strong>: ${item.scaction}</li>`;
+                const sponsorRenderFn = item => `<li><strong>${item.SpName}</strong> (${item.sptype || 'Sponsor'}) - ${item.spcompanyname || 'Private'}</li>`;
+
+                eventDetailsContent.innerHTML = `
+                    <h2 class="text-3xl font-bold mb-2">${details.ename}</h2>
+                    <p class="text-lg text-gray-600 mb-4">${details.event_type_name} | ${new Date(details.edate).toLocaleDateString()} at ${details.etime}</p>
+                    
+                    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <span class="text-2xl font-bold text-blue-600">Rs. ${details.eprice}</span>
+                        <span class="text-lg text-gray-700 ml-4">${registration_count} / ${details.vcapacity || 'N/A'} registered</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">Venue Details</h3>
+                            <p><strong>${details.vaddress || 'TBD'}</strong></p>
+                            <p>${details.vdistrict || ''}, ${details.vstate || ''}, ${details.vpincode || ''}</p>
+                            <p class="text-sm text-gray-600">Type: ${details.v_type || 'N/A'} | Capacity: ${details.vcapacity || 'N/A'}</p>
+                            <p class="text-sm text-gray-600">Fee: Rs. ${details.v_fee || 0}</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">Organizer Details</h3>
+                            <p><strong>${details.organizer_name || 'N/A'}</strong></p>
+                            <p class="text-sm text-gray-600">Email: ${details.organizer_email || 'N/A'}</pre>
+                            <p class="text-sm text-gray-600">Phone: ${details.organizer_phone || 'N/A'}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                        <div>
+                            ${buildListHTML('Event Schedule', schedule, scheduleRenderFn)}
+                        </div>
+                        <div>
+                            ${buildListHTML('Event Sponsors', sponsors, sponsorRenderFn)}
+                        </div>
+                    </div>
+
+                    <!-- --- MODIFIED --- Action button container -->
+                    <div id="event-action-footer" class="text-center mt-8 pt-6 border-t">
+                        <!-- This will be filled by JS now -->
+                    </div>
+                `;
+
+                // --- NEW --- Logic to fill the action button footer
+                const actionFooter = document.getElementById('event-action-footer');
+                if (currentUser) {
+                    if (details.oid === currentUser.UID) { // Check if user is organizer of *this* event
+                         actionFooter.innerHTML = '<p class="text-gray-600 font-semibold">You are the organizer of this event.</p>';
+                    } else if (currentUser.user_role === 'organizer') { // User is *an* organizer, but not of this event
+                         actionFooter.innerHTML = '<p class="text-gray-600 font-semibold">Organizers cannot register for other events.</p>';
+                    } else if (userRegistrations.includes(eventId)) { // Check if already registered
+                        actionFooter.innerHTML = `<button onclick="openTicketModal(${eventId})" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg">View Ticket</button>`;
+                    } else { // Not registered, show register button
+                        actionFooter.innerHTML = `<button onclick="handleEventRegisterClick(${eventId}, ${details.eprice})" class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Register for this Event</button>`;
+                    }
+                } else {
+                    // Logged out
+                    actionFooter.innerHTML = `<button onclick="handleEventRegisterClick(${eventId}, ${details.eprice})" class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Register to Attend</button>`;
+                }
+                
+            } catch (error) {
+                console.error(error);
+                eventDetailsContent.innerHTML = `<p class="text-red-500 text-center p-8">Error: ${error.message}</p>`;
+            }
+        }
+
+        // --- NEW ---
+        /**
+         * Opens and populates the Ticket modal
+         */
+        async function openTicketModal(eventId) {
+            openModal(ticketModal);
+            ticketContentEl.innerHTML = '<p>Loading your ticket...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/event/ticket`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID, eid: eventId })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load ticket');
+
+                // Format for display
+                const eventDate = new Date(data.edate).toLocaleDateString();
+                const role = data.vRole ? `Volunteer (${data.vRole})` : 'Audience';
+
+                ticketContentEl.innerHTML = `
+                    <div class="space-y-3">
+                        <h3 class="text-2xl font-bold text-gray-800">${data.ename}</h3>
+                        <p class="text-lg text-gray-600">${eventDate} at ${data.etime}</p>
+                        <p class="text-gray-600">${data.vaddress || 'Venue TBD'}</p>
+                    </div>
+                    <hr class="my-4 border-dashed">
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-500">TICKET HOLDER</p>
+                        <p class="text-xl font-semibold">${data.uname}</p>
+                        <p><strong>Username:</strong> ${data.username}</p>
+                        <p><strong>User ID:</strong> ${data.UID}</p>
+                        <p><strong>Registration Type:</strong> <span class="font-bold text-blue-600">${role}</span></p>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error(error);
+                ticketContentEl.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // --- Functions for Manage Event Modal ---
+        
+        /**
+         * Opens and populates the organizer's Manage Event modal
+         */
+        async function openManageModal(eventId) {
+            openModal(manageEventModal);
+            manageEventIdStore.value = eventId; // Store the event ID
+            
+            // Reset to first tab
+            showTab(null, 'tab-edit');
+            
+            // Clear all content
+            manageEventNameEl.textContent = 'Loading...';
+            editEventForm.reset();
+            audienceListEl.innerHTML = '<p>Loading audience...</p>';
+            scheduleListEl.innerHTML = '<p>Loading schedule...</p>';
+            sponsorListEl.innerHTML = '<p>Loading sponsors...</p>';
+            volunteerListEl.innerHTML = '<p>Loading volunteers...</p>';
+            
+            try {
+                // Fetch details to populate the forms
+                const response = await fetch(`${API_URL}/event/${eventId}/details`);
+                if (!response.ok) throw new Error('Failed to fetch event details');
+                const data = await response.json();
+                
+                // Cache the details
+                currentEventCache[eventId] = data;
+                
+                const { details, schedule, sponsors } = data;
+
+                // 1. Populate Edit Form
+                manageEventNameEl.textContent = details.ename;
+                document.getElementById('edit-event-name').value = details.ename;
+                document.getElementById('edit-event-date').value = details.edate.split('T')[0]; // Format for date input
+                document.getElementById('edit-event-time').value = details.etime;
+                document.getElementById('edit-event-price').value = details.eprice;
+                document.getElementById('edit-event-volunteers').value = details.evolunteers_no;
+                
+                // 2. Populate Schedule List
+                buildManageScheduleList(schedule);
+                
+                // 3. Populate Sponsor List
+                buildManageSponsorList(sponsors);
+                
+                // 4. Load audience/volunteers (done when tabs are clicked)
+                
+            } catch (error) {
+                console.error(error);
+                manageEventNameEl.textContent = 'Error loading event';
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles switching tabs in the manage modal
+         */
+        function showTab(evt, tabId) {
+            // Prevent default button behavior if event is passed
+            if (evt) evt.preventDefault();
+            
+            // Hide all tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Deactivate all tab links
+            document.querySelectorAll('.tab-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Show the target tab content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Activate the target tab link (if evt is available)
+            if (evt) {
+                evt.currentTarget.classList.add('active');
+            } else {
+                // If called programmatically, find the link by its onclick
+                document.querySelector(`.tab-link[onclick*="'${tabId}'"]`).classList.add('active');
+            }
+
+            // --- SPECIAL: Load data only when tab is clicked ---
+            if (tabId === 'tab-audience') {
+                loadAudienceList();
+            }
+            if (tabId === 'tab-volunteers') {
+                loadVolunteerList();
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Loads and builds the audience list (vRole IS NULL)
+         */
+        async function loadAudienceList() {
+            const eventId = manageEventIdStore.value;
+            if (!currentUser || !eventId) return;
+
+            audienceListEl.innerHTML = '<p>Loading audience list...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}/audience`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID }) // Send organizer UID for verification
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load audience');
+                
+                if (data.length === 0) {
+                    audienceListEl.innerHTML = '<p>No one has registered as audience yet.</p>';
+                    return;
+                }
+
+                // Build table
+                let tableHTML = `<table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg. Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+                
+                data.forEach(user => {
+                    tableHTML += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${user.uname}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${user.email}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${user.uphone || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(user.reg_date).toLocaleDateString()}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `</tbody></table>`;
+                audienceListEl.innerHTML = tableHTML;
+                
+            } catch (error) {
+                audienceListEl.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+
+        /**
+         * Loads and builds the volunteer list (vRole IS NOT NULL)
+// ... existing code ... -->
+         */
+        async function loadVolunteerList() {
+            const eventId = manageEventIdStore.value;
+            if (!currentUser || !eventId) return;
+
+            volunteerListEl.innerHTML = '<p>Loading volunteer list...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}/volunteers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load volunteers');
+                
+                if (data.length === 0) {
+                    volunteerListEl.innerHTML = '<p>No one has registered as a volunteer yet.</p>';
+                    return;
+                }
+
+                // Build list
+                let listHTML = '';
+                data.forEach(v => {
+                    listHTML += `
+                        <div class="p-3 bg-gray-100 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold">${v.uname} (${v.email || 'N/A'})</p>
+                                <p class="text-sm text-blue-600 font-medium">${v.vRole}</p>
+                            </div>
+                            <button onclick="openEditRolePrompt(${v.RegID}, '${v.vRole}')" class="bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded">
+                                Edit Role
+                            </button>
+                        </div>
+                    `;
+                });
+                volunteerListEl.innerHTML = listHTML;
+                
+            } catch (error) {
+                volunteerListEl.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Builds the schedule list for the manage modal
+         */
+        function buildManageScheduleList(schedule) {
+            scheduleListEl.innerHTML = '';
+            if (schedule.length === 0) {
+                scheduleListEl.innerHTML = '<p>No schedule items yet.</p>';
+                return;
+            }
+            schedule.forEach(item => {
+                scheduleListEl.innerHTML += `
+                    <div class="p-3 bg-gray-100 rounded-lg flex justify-between items-center">
+                        <div>
+                            <strong>${item.sctimestamp}</strong>: ${item.scaction}
+                        </div>
+                        <button onclick="openEditScheduleModal(${item.ScID})" class="bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded">
+                            Edit
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        /**
+// ... existing code ... -->
+         * Builds the sponsor list for the manage modal
+         */
+        function buildManageSponsorList(sponsors) {
+            sponsorListEl.innerHTML = '';
+            if (sponsors.length === 0) {
+                sponsorListEl.innerHTML = '<p>No sponsors yet.</p>';
+                return;
+            }
+            sponsors.forEach(item => {
+                sponsorListEl.innerHTML += `
+                    <div class="p-3 bg-gray-100 rounded-lg flex justify-between items-center">
+                        <div>
+                            <strong>${item.SpName}</strong> (${item.sptype || 'Sponsor'})
+                            <p class="text-sm text-gray-600">${item.spcompanyname || ''} - Rs. ${item.spmoney || 0}</p>
+                        </div>
+                        <button onclick="openEditSponsorModal(${item.SpID})" class="bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded">
+                            Edit
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        /**
+         * Reloads just the schedule list (after adding/editing)
+// ... existing code ... -->
+         */
+        async function reloadManageSchedule() {
+            const eventId = manageEventIdStore.value;
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}/details`);
+                const data = await response.json();
+                currentEventCache[eventId].schedule = data.schedule; // Update cache
+                buildManageScheduleList(data.schedule);
+            } catch (error) {
+                scheduleListEl.innerHTML = '<p class="text-red-500">Error reloading schedule.</p>';
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Reloads just the sponsor list (after adding/editing)
+         */
+        async function reloadManageSponsors() {
+            const eventId = manageEventIdStore.value;
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}/details`);
+                const data = await response.json();
+                currentEventCache[eventId].sponsors = data.sponsors; // Update cache
+                buildManageSponsorList(data.sponsors);
+            } catch (error) {
+                sponsorListEl.innerHTML = '<p class="text-red-500">Error reloading sponsors.</p>';
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles submitting the Edit Event form
+         */
+        async function handleEditEvent(e) {
+            e.preventDefault();
+            editEventErrorEl.classList.add('hidden');
+            const eventId = manageEventIdStore.value;
+            if (!currentUser || !eventId) return;
+
+            const payload = {
+                ename: document.getElementById('edit-event-name').value,
+                edate: document.getElementById('edit-event-date').value,
+                etime: document.getElementById('edit-event-time').value,
+                eprice: parseInt(document.getElementById('edit-event-price').value, 10),
+                evolunteers_no: parseInt(document.getElementById('edit-event-volunteers').value, 10),
+                oid: currentUser.UID
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/event/${eventId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+
+                alert('Event updated successfully!');
+                closeAllModals();
+                fetchAndDisplayEvents(); // Refresh main event list
+
+            } catch (error) {
+                editEventErrorEl.textContent = error.message;
+                editEventErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Handles submitting the Add Schedule Item form
+         */
+        async function handleAddSchedule(e) {
+            e.preventDefault();
+            addScheduleErrorEl.classList.add('hidden');
+            const eventId = manageEventIdStore.value;
+            if (!currentUser || !eventId) return;
+
+            const payload = {
+                eid: eventId,
+                sctimestamp: document.getElementById('sched-time').value,
+                scaction: document.getElementById('sched-action').value,
+                oid: currentUser.UID
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/schedule`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to add item');
+
+                alert('Schedule item added!');
+                addScheduleForm.reset();
+                currentEventCache[eventId].schedule.push(data.newItem);
+                buildManageScheduleList(currentEventCache[eventId].schedule);
+
+            } catch (error) {
+                addScheduleErrorEl.textContent = error.message;
+                addScheduleErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Handles submitting the Add Sponsor form
+// ... existing code ... -->
+         */
+        async function handleAddSponsor(e) {
+            e.preventDefault();
+            addSponsorErrorEl.classList.add('hidden');
+            const eventId = manageEventIdStore.value;
+            if (!currentUser || !eventId) return;
+
+            const payload = {
+                eid: eventId,
+                SpName: document.getElementById('sponsor-name').value,
+                SpEmail: document.getElementById('sponsor-email').value,
+                SpContact: document.getElementById('sponsor-contact').value,
+                spcompanyname: document.getElementById('sponsor-company').value,
+                sptype: document.getElementById('sponsor-type').value,
+                spmoney: parseInt(document.getElementById('sponsor-money').value, 10),
+                oid: currentUser.UID
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/sponsor`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to add sponsor');
+
+                alert('Sponsor added!');
+                addSponsorForm.reset();
+                currentEventCache[eventId].sponsors.push(data.newItem);
+                buildManageSponsorList(currentEventCache[eventId].sponsors);
+
+            } catch (error) {
+                addSponsorErrorEl.textContent = error.message;
+                addSponsorErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Opens the edit schedule modal and pre-fills it
+// ... existing code ... -->
+         */
+        function openEditScheduleModal(scId) {
+            const eventId = manageEventIdStore.value;
+            const scheduleItem = currentEventCache[eventId].schedule.find(item => item.ScID === scId);
+            
+            if (!scheduleItem) {
+                alert('Error: Could not find schedule item.');
+                return;
+            }
+            
+            document.getElementById('edit-schedule-id').value = scId;
+            document.getElementById('edit-sched-time').value = scheduleItem.sctimestamp;
+            document.getElementById('edit-sched-action').value = scheduleItem.scaction;
+            
+            openModal(editScheduleModal);
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles submitting the Edit Schedule form
+         */
+        async function handleEditSchedule(e) {
+            e.preventDefault();
+            editScheduleErrorEl.classList.add('hidden');
+            
+            const eventId = manageEventIdStore.value;
+            const scId = document.getElementById('edit-schedule-id').value;
+
+            const payload = {
+                sctimestamp: document.getElementById('edit-sched-time').value,
+                scaction: document.getElementById('edit-sched-action').value,
+                oid: currentUser.UID,
+                eid: eventId
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/schedule/${scId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+
+                alert('Schedule item updated!');
+                closeAllModals();
+                reloadManageSchedule(); // Reload the list
+                
+            } catch (error) {
+                editScheduleErrorEl.textContent = error.message;
+                editScheduleErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Opens the edit sponsor modal and pre-fills it
+         */
+        function openEditSponsorModal(spId) {
+            const eventId = manageEventIdStore.value;
+            const sponsorItem = currentEventCache[eventId].sponsors.find(item => item.SpID === spId);
+            
+            if (!sponsorItem) {
+                alert('Error: Could not find sponsor item.');
+                return;
+            }
+            
+            document.getElementById('edit-sponsor-id').value = spId;
+            document.getElementById('edit-sponsor-name').value = sponsorItem.SpName;
+            document.getElementById('edit-sponsor-company').value = sponsorItem.spcompanyname;
+            document.getElementById('edit-sponsor-email').value = sponsorItem.SpEmail;
+            document.getElementById('edit-sponsor-contact').value = sponsorItem.SpContact;
+            document.getElementById('edit-sponsor-type').value = sponsorItem.sptype;
+            document.getElementById('edit-sponsor-money').value = sponsorItem.spmoney;
+            
+            openModal(editSponsorModal);
+        }
+        
+        /**
+// ... existing code ... -->
+         * Handles submitting the Edit Sponsor form
+         */
+        async function handleEditSponsor(e) {
+            e.preventDefault();
+            editSponsorErrorEl.classList.add('hidden');
+            
+            const eventId = manageEventIdStore.value;
+            const spId = document.getElementById('edit-sponsor-id').value;
+            
+            const payload = {
+                SpName: document.getElementById('edit-sponsor-name').value,
+                SpEmail: document.getElementById('edit-sponsor-email').value,
+                SpContact: document.getElementById('edit-sponsor-contact').value,
+                spcompanyname: document.getElementById('edit-sponsor-company').value,
+                sptype: document.getElementById('edit-sponsor-type').value,
+                spmoney: parseInt(document.getElementById('edit-sponsor-money').value, 10),
+                oid: currentUser.UID,
+                eid: eventId
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/sponsor/${spId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+                
+                alert('Sponsor updated!');
+                closeAllModals();
+                reloadManageSponsors(); // Reload the list
+                
+            } catch (error) {
+                editSponsorErrorEl.textContent = error.message;
+                editSponsorErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Handles submitting the Add Volunteer form
+// ... existing code ... -->
+         */
+        async function handleAddVolunteer(e) {
+            e.preventDefault();
+            addVolunteerErrorEl.classList.add('hidden');
+            
+            const eventId = manageEventIdStore.value;
+            
+            const payload = {
+                eid: eventId,
+                uid_to_add: parseInt(document.getElementById('add-volunteer-uid').value, 10),
+                vRole: document.getElementById('add-volunteer-role').value,
+                oid: currentUser.UID
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/volunteer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to add volunteer');
+
+                alert(data.message);
+                addVolunteerForm.reset();
+                loadVolunteerList(); // Refresh the volunteer list
+                
+            } catch (error) {
+                addVolunteerErrorEl.textContent = error.message;
+                addVolunteerErrorEl.classList.remove('hidden');
+            }
+        }
+        
+        /**
+// ... existing code ... -->
+         * Opens a prompt to edit a volunteer's role
+         */
+        async function openEditRolePrompt(regId, currentRole) {
+            const newRole = prompt('Enter new role for this volunteer:', currentRole);
+            
+            if (!newRole || newRole === currentRole) {
+                return; // User cancelled or didn't change the role
+            }
+            
+            const eventId = manageEventIdStore.value;
+            
+            const payload = {
+                vRole: newRole,
+                oid: currentUser.UID,
+                eid: eventId
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/registration/${regId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+                
+                alert('Role updated!');
+                loadVolunteerList(); // Refresh the list
+                
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // --- Profile Modal Functions ---
+
+        /**
+// ... existing code ... -->
+         * Opens the profile modal and loads the first tab
+         */
+        function openProfileModal() {
+            if (!currentUser) return;
+            openModal(profileModal);
+            
+            // Reset to first tab
+            showProfileTab(null, 'tab-details');
+            
+            // Clear content
+            profileDetailsContent.innerHTML = '<p>Loading profile details...</p>';
+            profileHistoryList.innerHTML = '<p>Loading history...</p>';
+            editProfileErrorEl.classList.add('hidden');
+            editPasswordErrorEl.classList.add('hidden');
+            
+            // Load details for details tab and settings tab
+            loadProfileDetails();
+        }
+
+        /**
+         * Handles switching tabs in the profile modal
+// ... existing code ... -->
+         */
+        function showProfileTab(evt, tabId) {
+            if (evt) evt.preventDefault();
+            
+            document.querySelectorAll('.profile-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.profile-tab-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            document.getElementById(tabId).classList.add('active');
+            
+            if (evt) {
+                evt.currentTarget.classList.add('active');
+            } else {
+                document.querySelector(`.profile-tab-link[onclick*="'${tabId}'"]`).classList.add('active');
+            }
+
+            // Load history only when tab is clicked
+            if (tabId === 'tab-history') {
+                loadProfileHistory();
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Loads and populates the profile details and settings form
+         */
+        async function loadProfileDetails() {
+            try {
+                const response = await fetch(`${API_URL}/user/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load profile');
+
+                // --- 1. Populate "My Details" Tab ---
+                profileDetailsContent.innerHTML = `
+                    <p><strong>Full Name:</strong> ${data.uname || ''}</p>
+                    <p><strong>Email:</strong> ${data.email || ''}</p>
+                    <p><strong>Username:</strong> ${data.username || ''}</p>
+                    <p><strong>Phone:</strong> ${data.uphone || 'Not set'}</p>
+                    <p><strong>Address:</strong> ${data.uaddress || 'Not set'}</p>
+                    <p><strong>State:</strong> ${data.ustate || 'Not set'}</p>
+                    <p><strong>Date of Birth:</strong> ${data.udob ? new Date(data.udob).toLocaleDateString() : 'Not set'}</p>
+                `;
+
+                // --- 2. Populate "Account Settings" Form ---
+                document.getElementById('edit-profile-name').value = data.uname || '';
+                document.getElementById('edit-profile-email').value = data.email || '';
+                document.getElementById('edit-profile-username').value = data.username || '';
+                document.getElementById('edit-profile-phone').value = data.uphone || '';
+                document.getElementById('edit-profile-address').value = data.uaddress || '';
+                document.getElementById('edit-profile-state').value = data.ustate || '';
+                document.getElementById('edit-profile-dob').value = data.udob ? data.udob.split('T')[0] : '';
+                
+            } catch (error) {
+                profileDetailsContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+
+        /**
+         * Loads and populates the user's event history
+// ... existing code ... -->
+         */
+        async function loadProfileHistory() {
+            profileHistoryList.innerHTML = '<p>Loading history...</p>';
+            try {
+                const response = await fetch(`${API_URL}/user/history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: currentUser.UID })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to load history');
+                
+                if (data.length === 0) {
+                    profileHistoryList.innerHTML = '<p>You have not registered for any events yet.</p>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(event => {
+                    html += `
+                        <div class="p-3 bg-gray-100 rounded-lg">
+                            <p class="font-semibold">${event.ename}</p>
+                            <p class="text-sm text-gray-600">
+                                ${new Date(event.edate).toLocaleDateString()} | 
+                                Role: <span class="font-medium">${event.vRole || 'Audience'}</span> | 
+                                Price: <span class="font-medium">Rs. ${event.eprice}</span>
+                            </p>
+                        </div>
+                    `;
+                });
+                profileHistoryList.innerHTML = html;
+
+            } catch (error) {
+                profileHistoryList.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles submitting the Edit Profile form
+         */
+        async function handleEditProfile(e) {
+            e.preventDefault();
+            editProfileErrorEl.classList.add('hidden');
+
+            const payload = {
+                uid: currentUser.UID,
+                uname: document.getElementById('edit-profile-name').value,
+                email: document.getElementById('edit-profile-email').value,
+                username: document.getElementById('edit-profile-username').value,
+                uphone: document.getElementById('edit-profile-phone').value,
+                uaddress: document.getElementById('edit-profile-address').value,
+                ustate: document.getElementById('edit-profile-state').value,
+                udob: document.getElementById('edit-profile-dob').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+
+                alert('Profile updated successfully!');
+                
+                // Update local user object and navbar
+                currentUser.uname = data.newUname;
+                welcomeMsg.textContent = `Welcome, ${currentUser.uname}! (${currentUser.user_role})`;
+
+                // Reload details
+                loadProfileDetails();
+                // Switch back to details tab
+                showProfileTab(null, 'tab-details');
+
+            } catch (error) {
+                editProfileErrorEl.textContent = error.message;
+                editProfileErrorEl.classList.remove('hidden');
+            }
+        }
+
+        /**
+// ... existing code ... -->
+         * Handles submitting the Change Password form
+         */
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            editPasswordErrorEl.classList.add('hidden');
+
+            const payload = {
+                uid: currentUser.UID,
+                oldPassword: document.getElementById('edit-pass-old').value,
+                newPassword: document.getElementById('edit-pass-new').value
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/user/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Update failed');
+                
+                alert('Password changed successfully!');
+                editPasswordForm.reset();
+
+            } catch (error) {
+                editPasswordErrorEl.textContent = error.message;
+                editPasswordErrorEl.classList.remove('hidden');
+            }
+        }
+
+
+        // --- UI HELPER FUNCTIONS ---
+        
+        function updateNavUI(isLoggedIn) {
+            if (isLoggedIn) {
+                authLinks.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                welcomeMsg.textContent = `Welcome, ${currentUser.uname}! (${currentUser.user_role})`;
+                
+                profileBtn.classList.remove('hidden');
+
+                if (currentUser.user_role === 'organizer') {
+                    createEventBtn.classList.remove('hidden');
+                } else {
+                    createEventBtn.classList.add('hidden');
+                }
+            } else {
+                authLinks.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+                welcomeMsg.textContent = '';
+                profileBtn.classList.add('hidden');
+            }
+        }
+
+        function openModal(modal) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-backdrop').forEach(modal => {
+                modal.classList.add('hidden');
+            });
+            document.body.classList.remove('modal-active');
+        }
+
+        function goHome() {
+            closeAllModals();
+            fetchAndDisplayEvents();
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        // Load events when the page loads
+        document.addEventListener('DOMContentLoaded', fetchAndDisplayEvents);
+
+        // Modal open/close listeners
+        loginBtn.addEventListener('click', () => openModal(loginModal));
+        registerBtn.addEventListener('click', () => openModal(registerModal));
+        logoutBtn.addEventListener('click', handleLogout);
+        createEventBtn.addEventListener('click', () => openModal(createEventModal));
+        profileBtn.addEventListener('click', openProfileModal);
+
+        document.querySelectorAll('.modal-close-btn').forEach(btn => {
+            btn.addEventListener('click', closeAllModals);
+        });
+        
+        // Close modals on backdrop click
+        document.querySelectorAll('.modal-backdrop').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                // Check if the click is on the backdrop itself, not the content
+                if (e.target === modal) {
+                    closeAllModals();
+                }
+            });
+        });
+        
+        // Form submission listeners
+        loginForm.addEventListener('submit', handleLogin);
+        registerForm.addEventListener('submit', handleRegister);
+        createEventForm.addEventListener('submit', handleCreateEvent);
+        
+        // --- Manage form listeners ---
+        editEventForm.addEventListener('submit', handleEditEvent);
+        addScheduleForm.addEventListener('submit', handleAddSchedule);
+        addSponsorForm.addEventListener('submit', handleAddSponsor);
+
+        addVolunteerForm.addEventListener('submit', handleAddVolunteer);
+        editScheduleForm.addEventListener('submit', handleEditSchedule);
+        editSponsorForm.addEventListener('submit', handleEditSponsor);
+        editProfileForm.addEventListener('submit', handleEditProfile);
+        editPasswordForm.addEventListener('submit', handleChangePassword);
+
+    </script>
+</body>
+</html>
