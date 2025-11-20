@@ -12,10 +12,10 @@ app.use(express.static('public')); // Serve static files from the 'public' folde
 
 // --- DATABASE CONNECTION ---
 const dbConfig = {
-    host: 'localhost',
-    user: 'root', // Your MySQL username
-    password: 'MYSQL@teja34', // Your MySQL password
-    database: 'eventrack' // Database name is correct
+    host: process.env.DB_HOST, // --- MODIFIED ---
+    user: process.env.DB_USER, // --- MODIFIED ---
+    password: process.env.DB_PASS, // --- MODIFIED ---
+    database: process.env.DB_NAME // --- MODIFIED ---
 };
 
 // Create a connection pool
