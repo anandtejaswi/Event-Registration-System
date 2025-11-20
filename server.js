@@ -1,25 +1,60 @@
+// 1. Load environment variables immediately
+// We use the standard config() which looks for .env in the current folder
+const dotenv = require('dotenv');
+const dotenvResult = dotenv.config();
+
+// 2. Debugging: Check if .env was found
+if (dotenvResult.error) {
+    console.error("❌ DOTENV ERROR: .env file not found!");
+    console.error("   Make sure a file named '.env' is in the root folder next to server.js");
+    // We don't exit here to allow hardcoded fallback if you chose that route, 
+    // but for this setup, it will likely fail later if missing.
+} else {
+    console.log("✅ CONFIG LOADED: .env file found.");
+}
+
+// 3. Check specific variables
+if (!process.env.DB_USER) {
+    console.warn("⚠️ WARNING: DB_USER is undefined. Checking credentials...");
+} else {
+    console.log(`✅ CONNECTING AS: ${process.env.DB_USER}`);
+}
+
 const express = require('express');
-const mysql = require('mysql2/promise'); // Using the 'promise' version
+const mysql = require('mysql2/promise'); 
 const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // --- MIDDLEWARE ---
-app.use(cors()); // Allow cross-origin requests
-app.use(express.json()); // Parse incoming JSON bodies
-app.use(express.static('public')); // Serve static files from the 'public' folder
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
 
 // --- DATABASE CONNECTION ---
 const dbConfig = {
-    host: process.env.DB_HOST, // --- MODIFIED ---
-    user: process.env.DB_USER, // --- MODIFIED ---
-    password: process.env.DB_PASS, // --- MODIFIED ---
-    database: process.env.DB_NAME // --- MODIFIED ---
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || '', // Will use empty string if variable missing
+    database: process.env.DB_NAME || 'eventrack'
 };
 
 // Create a connection pool
 const pool = mysql.createPool(dbConfig);
+
+// Test connection on startup to catch errors early
+pool.getConnection()
+    .then(connection => {
+        console.log("✅ DATABASE CONNECTED SUCCESSFULLY");
+        connection.release();
+    })
+    .catch(err => {
+        console.error("❌ DATABASE CONNECTION FAILED");
+        console.error("   Code:", err.code);
+        console.error("   Message:", err.message);
+        console.error("   Check your .env file password and database name.");
+    });
 
 // --- API ENDPOINTS ---
 
@@ -27,7 +62,6 @@ const pool = mysql.createPool(dbConfig);
  * [PUBLIC] Get all events
  */
 app.get('/api/events', async (req, res) => {
-    // ... (Same as before)
     try {
         const [rows] = await pool.query(`
             SELECT 
@@ -50,7 +84,6 @@ app.get('/api/events', async (req, res) => {
  * [PUBLIC] User Registration
  */
 app.post('/api/register', async (req, res) => {
-    // ... (Same as before)
     const { uname, email, username, password, user_role, uphone, uaddress, ustate, udob } = req.body;
     
     if (!uname || !email || !username || !password || !user_role) {
@@ -78,7 +111,6 @@ app.post('/api/register', async (req, res) => {
  * [PUBLIC] User Login
  */
 app.post('/api/login', async (req, res) => {
-    // ... (Same as before)
     const { username, password } = req.body;
     try {
         const [rows] = await pool.query(
@@ -102,7 +134,6 @@ app.post('/api/login', async (req, res) => {
  * [ORGANIZER] Create a new event
  */
 app.post('/api/events', async (req, res) => {
-    // ... (Same as before)
     const { ename, edate, etime, vid, et_id, eprice, evolunteers_no, oid } = req.body;
     try {
         const [result] = await pool.query(
@@ -120,10 +151,8 @@ app.post('/api/events', async (req, res) => {
  * [AUDIENCE/VOLUNTEER] Register for an event
  */
 app.post('/api/register-event', async (req, res) => {
-    // ... (Same as before)
     const { UID, EID, vRole } = req.body;
     try {
-        // --- MODIFIED --- Check if already registered
         const [existing] = await pool.query(
             'SELECT RegID FROM Registrations WHERE UID = ? AND EID = ?',
             [UID, EID]
@@ -145,7 +174,6 @@ app.post('/api/register-event', async (req, res) => {
 
 /**
  * [PUBLIC] Get all details for a single event
- * // --- MODIFIED --- Now includes ScID and SpID
  */
 app.get('/api/event/:id/details', async (req, res) => {
     const { id } = req.params;
@@ -165,9 +193,7 @@ app.get('/api/event/:id/details', async (req, res) => {
             WHERE e.eid = ?
         `, [id]);
 
-        // --- MODIFIED --- Selected ScID
         const schedulePromise = pool.query('SELECT ScID, sctimestamp, scaction FROM Schedule WHERE eid = ?', [id]);
-        // --- MODIFIED --- Selected SpID
         const sponsorsPromise = pool.query('SELECT SpID, SpName, SpEmail, SpContact, spcompanyname, sptype, spmoney FROM Sponsor WHERE eid = ?', [id]);
         const regCountPromise = pool.query('SELECT COUNT(*) AS registration_count FROM Registrations WHERE eid = ?', [id]);
 
@@ -199,7 +225,6 @@ app.get('/api/event/:id/details', async (req, res) => {
  * [ORGANIZER] Update event details
  */
 app.put('/api/event/:id', async (req, res) => {
-    // ... (Same as before)
     const { id } = req.params;
     const { ename, edate, etime, eprice, evolunteers_no, oid } = req.body;
 
@@ -222,11 +247,10 @@ app.put('/api/event/:id', async (req, res) => {
 
 /**
  * [ORGANIZER] Get audience list for an event
- * // --- MODIFIED --- Now filters for vRole IS NULL
  */
 app.post('/api/event/:id/audience', async (req, res) => {
     const { id } = req.params;
-    const { uid } = req.body; // Organizer's UID for verification
+    const { uid } = req.body; 
 
     try {
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [id]);
@@ -234,7 +258,6 @@ app.post('/api/event/:id/audience', async (req, res) => {
             return res.status(403).json({ error: 'Access denied: You are not the organizer of this event.' });
         }
 
-        // --- MODIFIED --- Added "WHERE r.vRole IS NULL"
         const [audienceRows] = await pool.query(`
             SELECT u.uname, u.email, u.uphone, r.reg_date, r.RegID
             FROM Registrations r
@@ -254,7 +277,6 @@ app.post('/api/event/:id/audience', async (req, res) => {
  * [ORGANIZER] Add a schedule item
  */
 app.post('/api/schedule', async (req, res) => {
-    // ... (Same as before)
     const { eid, sctimestamp, scaction, oid } = req.body;
 
     try {
@@ -267,7 +289,6 @@ app.post('/api/schedule', async (req, res) => {
             'INSERT INTO Schedule (eid, sctimestamp, scaction) VALUES (?, ?, ?)',
             [eid, sctimestamp, scaction]
         );
-        // --- MODIFIED --- Return the newly created item
         res.status(201).json({ 
             message: 'Schedule item added!', 
             newItem: {
@@ -287,7 +308,6 @@ app.post('/api/schedule', async (req, res) => {
  * [ORGANIZER] Add a sponsor
  */
 app.post('/api/sponsor', async (req, res) => {
-    // ... (Same as before)
     const { SpName, SpEmail, SpContact, spcompanyname, sptype, spmoney, eid, oid } = req.body;
     
     try {
@@ -300,7 +320,6 @@ app.post('/api/sponsor', async (req, res) => {
             'INSERT INTO Sponsor (SpName, SpEmail, SpContact, spcompanyname, sptype, spmoney, eid) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [SpName, SpEmail, SpContact, spcompanyname, sptype, spmoney, eid]
         );
-         // --- MODIFIED --- Return the newly created item
         res.status(201).json({
             message: 'Sponsor added!', 
             newItem: {
@@ -317,7 +336,6 @@ app.post('/api/sponsor', async (req, res) => {
 });
 
 
-// --- NEW ---
 /**
  * [ORGANIZER] Update a schedule item
  */
@@ -330,13 +348,11 @@ app.put('/api/schedule/:id', async (req, res) => {
     }
 
     try {
-        // Security check: Verify organizer owns the event this schedule item belongs to
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [eid]);
         if (eventRows.length === 0 || eventRows[0].oid !== oid) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        // Update the schedule item
         const [result] = await pool.query(
             'UPDATE Schedule SET sctimestamp = ?, scaction = ? WHERE ScID = ? AND eid = ?',
             [sctimestamp, scaction, id, eid]
@@ -354,7 +370,6 @@ app.put('/api/schedule/:id', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [ORGANIZER] Update a sponsor
  */
@@ -367,13 +382,11 @@ app.put('/api/sponsor/:id', async (req, res) => {
     }
 
     try {
-        // Security check
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [eid]);
         if (eventRows.length === 0 || eventRows[0].oid !== oid) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        // Update the sponsor
         const [result] = await pool.query(
             `UPDATE Sponsor SET SpName = ?, SpEmail = ?, SpContact = ?, 
              spcompanyname = ?, sptype = ?, spmoney = ? 
@@ -393,22 +406,19 @@ app.put('/api/sponsor/:id', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [ORGANIZER] Get volunteer list for an event
  */
 app.post('/api/event/:id/volunteers', async (req, res) => {
-    const { id } = req.params; // Event ID
-    const { uid } = req.body; // Organizer's UID
+    const { id } = req.params; 
+    const { uid } = req.body; 
 
     try {
-        // Security check
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [id]);
         if (eventRows.length === 0 || eventRows[0].oid !== uid) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        // Get volunteers (vRole IS NOT NULL)
         const [volunteerRows] = await pool.query(`
             SELECT u.uname, u.email, u.uphone, r.reg_date, r.vRole, r.RegID
             FROM Registrations r
@@ -424,7 +434,6 @@ app.post('/api/event/:id/volunteers', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [ORGANIZER] Manually add a volunteer
  */
@@ -436,25 +445,21 @@ app.post('/api/volunteer', async (req, res) => {
     }
 
     try {
-        // Security check
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [eid]);
         if (eventRows.length === 0 || eventRows[0].oid !== oid) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        // Check if user exists
         const [userRows] = await pool.query('SELECT UID FROM User WHERE UID = ?', [uid_to_add]);
         if (userRows.length === 0) {
             return res.status(404).json({ error: 'User not found with that ID.' });
         }
 
-        // Check if already registered
         const [existing] = await pool.query(
             'SELECT RegID, vRole FROM Registrations WHERE UID = ? AND EID = ?',
             [uid_to_add, eid]
         );
         if (existing.length > 0) {
-            // Already registered, let's just update their role
             const [updateResult] = await pool.query(
                 'UPDATE Registrations SET vRole = ? WHERE RegID = ?',
                 [vRole, existing[0].RegID]
@@ -462,7 +467,6 @@ app.post('/api/volunteer', async (req, res) => {
             return res.status(200).json({ message: 'User already registered; role updated.', regId: existing[0].RegID });
         }
 
-        // Add new registration
         const [result] = await pool.query(
             'INSERT INTO Registrations (UID, EID, reg_date, vRole) VALUES (?, ?, CURDATE(), ?)',
             [uid_to_add, eid, vRole]
@@ -476,7 +480,6 @@ app.post('/api/volunteer', async (req, res) => {
 });
 
 
-// --- NEW ---
 /**
  * [ORGANIZER] Update a registration (change volunteer role)
  */
@@ -489,13 +492,11 @@ app.put('/api/registration/:id', async (req, res) => {
     }
 
     try {
-        // Security check
         const [eventRows] = await pool.query('SELECT oid FROM Events WHERE eid = ?', [eid]);
         if (eventRows.length === 0 || eventRows[0].oid !== oid) {
             return res.status(403).json({ error: 'Access denied.' });
         }
 
-        // Update the role
         const [result] = await pool.query(
             'UPDATE Registrations SET vRole = ? WHERE RegID = ? AND EID = ?',
             [vRole, id, eid]
@@ -513,10 +514,8 @@ app.put('/api/registration/:id', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Get user's profile details
- * We use POST to securely send the UID in the body
  */
 app.post('/api/user/profile', async (req, res) => {
     const { uid } = req.body;
@@ -525,7 +524,6 @@ app.post('/api/user/profile', async (req, res) => {
     }
 
     try {
-        // Select all details EXCEPT password
         const [rows] = await pool.query(
             'SELECT UID, uname, email, username, uphone, uaddress, ustate, udob FROM User WHERE UID = ?',
             [uid]
@@ -543,7 +541,6 @@ app.post('/api/user/profile', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Update user's profile details
  */
@@ -574,7 +571,6 @@ app.put('/api/user/profile', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Change user's password
  */
@@ -586,18 +582,15 @@ app.put('/api/user/password', async (req, res) => {
     }
 
     try {
-        // 1. Get the user's current password
         const [rows] = await pool.query('SELECT password FROM User WHERE UID = ?', [uid]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'User not found.' });
         }
 
-        // 2. Check if the old password matches
         if (rows[0].password !== oldPassword) {
             return res.status(403).json({ error: 'Incorrect old password.' });
         }
 
-        // 3. Update to the new password
         const [result] = await pool.query(
             'UPDATE User SET password = ? WHERE UID = ?',
             [newPassword, uid]
@@ -615,7 +608,6 @@ app.put('/api/user/password', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Get user's event history
  */
@@ -642,7 +634,6 @@ app.post('/api/user/history', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Get all event IDs a user is registered for
  */
@@ -656,7 +647,6 @@ app.post('/api/user/registrations', async (req, res) => {
             'SELECT EID FROM Registrations WHERE UID = ?',
             [uid]
         );
-        // Map the array of objects [ {EID: 1}, {EID: 5} ] to just [1, 5]
         const eventIds = rows.map(row => row.EID);
         res.json(eventIds);
     } catch (error) {
@@ -665,7 +655,6 @@ app.post('/api/user/registrations', async (req, res) => {
     }
 });
 
-// --- NEW ---
 /**
  * [SECURE] Get ticket details for a user and event
  */
