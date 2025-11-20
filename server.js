@@ -43,14 +43,14 @@ const pool = mysql.createPool(dbConfig);
 // Test connection on startup to catch errors early
 pool.getConnection()
     .then(connection => {
-        console.log("✅ DATABASE CONNECTED SUCCESSFULLY");
+        console.log("DATABASE CONNECTED SUCCESSFULLY");
         connection.release();
     })
     .catch(err => {
-        console.error("❌ DATABASE CONNECTION FAILED");
-        console.error("   Code:", err.code);
-        console.error("   Message:", err.message);
-        console.error("   Check your .env file password and database name.");
+        console.error("DATABASE CONNECTION FAILED");
+        console.error("Code:", err.code);
+        console.error("Message:", err.message);
+        console.error("Check your .env file password and database name.");
     });
 
 // --- API ENDPOINTS ---
