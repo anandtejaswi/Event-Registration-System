@@ -1,23 +1,20 @@
-// 1. Load environment variables immediately
-// We use the standard config() which looks for .env in the current folder
 const dotenv = require('dotenv');
 const dotenvResult = dotenv.config();
 
-// 2. Debugging: Check if .env was found
 if (dotenvResult.error) {
-    console.error("❌ DOTENV ERROR: .env file not found!");
-    console.error("   Make sure a file named '.env' is in the root folder next to server.js");
+    console.error(" DOTENV ERROR: .env file not found!");
+    console.error("Make sure a file named '.env' is in the root folder next to server.js");
     // We don't exit here to allow hardcoded fallback if you chose that route, 
     // but for this setup, it will likely fail later if missing.
 } else {
-    console.log("✅ CONFIG LOADED: .env file found.");
+    console.log("CONFIG LOADED: .env file found.");
 }
 
 // 3. Check specific variables
 if (!process.env.DB_USER) {
-    console.warn("⚠️ WARNING: DB_USER is undefined. Checking credentials...");
+    console.warn("WARNING: DB_USER is undefined. Checking credentials...");
 } else {
-    console.log(`✅ CONNECTING AS: ${process.env.DB_USER}`);
+    console.log(` CONNECTING AS: ${process.env.DB_USER}`);
 }
 
 const express = require('express');
@@ -34,10 +31,10 @@ app.use(express.static('public'));
 
 // --- DATABASE CONNECTION ---
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASS || '', // Will use empty string if variable missing
-    database: process.env.DB_NAME || 'eventrack'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
 };
 
 // Create a connection pool
